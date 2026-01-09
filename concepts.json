@@ -1,0 +1,740 @@
+{
+  "meta": {
+    "dataset_name": "Sample - Superstore (Tableau)",
+    "source_file": "sample_-_superstore.xls",
+    "sheets": [
+      "Orders",
+      "Returns",
+      "People"
+    ],
+    "time_coverage": {
+      "order_date_min": "2014-01-03",
+      "order_date_max": "2017-12-30"
+    },
+    "grain": {
+      "primary_fact_table": "orders_lines",
+      "row_grain": "one order line item (one product on one order)",
+      "row_id_unique": true,
+      "order_id_not_unique": true
+    },
+    "assumptions": [
+      "Orders.Sales is treated as net sales at the line level (already reflecting discount); do not re-apply Discount to Sales unless you have list price.",
+      "Orders.Profit is treated as contribution profit for the line item (after discounts and implied costs). It is not full company net income.",
+      "Returns sheet is a list of returned orders (order-level flag). Amounts for returns are not provided; 'net of returns' metrics require an explicit assumption (e.g., exclude returned orders from realized sales/profit).",
+      "People sheet maps Region -> Person (regional manager) and can be used for accountability views."
+    ],
+    "created_at": "2026-01-09T09:06:24Z"
+  },
+  "tables": {
+    "orders_lines": {
+      "source_sheet": "Orders",
+      "primary_key": "Row ID",
+      "natural_keys": [
+        "Order ID",
+        "Product ID"
+      ],
+      "row_count": 9994,
+      "columns": {
+        "Row ID": {
+          "role": "pk",
+          "type": "int"
+        },
+        "Order ID": {
+          "role": "order_key",
+          "type": "string"
+        },
+        "Order Date": {
+          "role": "date",
+          "type": "date"
+        },
+        "Ship Date": {
+          "role": "date",
+          "type": "date"
+        },
+        "Ship Mode": {
+          "role": "dimension",
+          "type": "string"
+        },
+        "Customer ID": {
+          "role": "customer_key",
+          "type": "string"
+        },
+        "Customer Name": {
+          "role": "dimension",
+          "type": "string"
+        },
+        "Segment": {
+          "role": "dimension",
+          "type": "string"
+        },
+        "Country": {
+          "role": "geo",
+          "type": "string"
+        },
+        "City": {
+          "role": "geo",
+          "type": "string"
+        },
+        "State": {
+          "role": "geo",
+          "type": "string"
+        },
+        "Postal Code": {
+          "role": "geo",
+          "type": "string",
+          "note": "treat as string to preserve leading zeros"
+        },
+        "Region": {
+          "role": "geo",
+          "type": "string"
+        },
+        "Product ID": {
+          "role": "sku_key",
+          "type": "string"
+        },
+        "Category": {
+          "role": "product_dim",
+          "type": "string"
+        },
+        "Sub-Category": {
+          "role": "product_dim",
+          "type": "string"
+        },
+        "Product Name": {
+          "role": "product_dim",
+          "type": "string"
+        },
+        "Sales": {
+          "role": "measure",
+          "type": "float",
+          "unit": "currency"
+        },
+        "Quantity": {
+          "role": "measure",
+          "type": "int",
+          "unit": "units"
+        },
+        "Discount": {
+          "role": "measure",
+          "type": "float",
+          "unit": "fraction"
+        },
+        "Profit": {
+          "role": "measure",
+          "type": "float",
+          "unit": "currency"
+        }
+      }
+    },
+    "returns": {
+      "source_sheet": "Returns",
+      "grain": "one returned order flag",
+      "row_count": 296,
+      "columns": {
+        "Order ID": {
+          "role": "order_key",
+          "type": "string"
+        },
+        "Returned": {
+          "role": "flag",
+          "type": "string",
+          "expected_values": [
+            "Yes"
+          ]
+        }
+      }
+    },
+    "people": {
+      "source_sheet": "People",
+      "grain": "region to manager mapping",
+      "row_count": 4,
+      "columns": {
+        "Region": {
+          "role": "geo",
+          "type": "string"
+        },
+        "Person": {
+          "role": "owner",
+          "type": "string",
+          "note": "regional manager / owner"
+        }
+      }
+    }
+  },
+  "joins": [
+    {
+      "left": "orders_lines",
+      "right": "returns",
+      "on": [
+        "Order ID"
+      ],
+      "type": "left",
+      "adds": [
+        "Returned"
+      ]
+    },
+    {
+      "left": "orders_lines",
+      "right": "people",
+      "on": [
+        "Region"
+      ],
+      "type": "left",
+      "adds": [
+        "Person"
+      ]
+    }
+  ],
+  "core_dimensions": {
+    "time": {
+      "order_date": {
+        "column": "Order Date",
+        "table": "orders_lines"
+      },
+      "ship_date": {
+        "column": "Ship Date",
+        "table": "orders_lines"
+      },
+      "derived": {
+        "order_month": "month(Order Date)",
+        "order_quarter": "quarter(Order Date)",
+        "order_year": "year(Order Date)",
+        "ship_lead_time_days": "days_between(Ship Date, Order Date)"
+      }
+    },
+    "product": {
+      "sku": {
+        "column": "Product ID"
+      },
+      "product_name": {
+        "column": "Product Name"
+      },
+      "category": {
+        "column": "Category"
+      },
+      "sub_category": {
+        "column": "Sub-Category"
+      }
+    },
+    "customer": {
+      "customer_id": {
+        "column": "Customer ID"
+      },
+      "customer_name": {
+        "column": "Customer Name"
+      },
+      "segment": {
+        "column": "Segment"
+      }
+    },
+    "geography": {
+      "region": {
+        "column": "Region"
+      },
+      "state": {
+        "column": "State"
+      },
+      "city": {
+        "column": "City"
+      },
+      "postal_code": {
+        "column": "Postal Code"
+      },
+      "country": {
+        "column": "Country"
+      }
+    },
+    "fulfillment": {
+      "ship_mode": {
+        "column": "Ship Mode"
+      },
+      "regional_manager": {
+        "column": "Person",
+        "table": "people"
+      }
+    }
+  },
+  "base_metrics": {
+    "sales": {
+      "expr": "sum(Sales)",
+      "table": "orders_lines",
+      "meaning": "Net sales at line level"
+    },
+    "profit": {
+      "expr": "sum(Profit)",
+      "table": "orders_lines",
+      "meaning": "Contribution profit at line level"
+    },
+    "units": {
+      "expr": "sum(Quantity)",
+      "table": "orders_lines",
+      "meaning": "Total units sold"
+    },
+    "orders": {
+      "expr": "count_distinct(Order ID)",
+      "table": "orders_lines",
+      "meaning": "Unique orders"
+    },
+    "customers": {
+      "expr": "count_distinct(Customer ID)",
+      "table": "orders_lines",
+      "meaning": "Unique customers"
+    },
+    "avg_discount_simple": {
+      "expr": "avg(Discount)",
+      "table": "orders_lines",
+      "meaning": "Unweighted average discount rate"
+    },
+    "returned_orders": {
+      "expr": "count_distinct_if(Order ID, Returned == 'Yes')",
+      "tables": [
+        "orders_lines",
+        "returns"
+      ],
+      "meaning": "Unique returned orders"
+    }
+  },
+  "derived_metrics": {
+    "profit_margin": {
+      "expr": "profit / nullif(sales, 0)",
+      "meaning": "Contribution margin %"
+    },
+    "aov": {
+      "expr": "sales / nullif(orders, 0)",
+      "meaning": "Average order value"
+    },
+    "units_per_order": {
+      "expr": "units / nullif(orders, 0)",
+      "meaning": "Basket size proxy"
+    },
+    "asp": {
+      "expr": "sales / nullif(units, 0)",
+      "meaning": "Average selling price per unit"
+    },
+    "return_rate_orders": {
+      "expr": "returned_orders / nullif(orders, 0)",
+      "meaning": "Share of orders returned"
+    },
+    "lead_time_avg_days": {
+      "expr": "avg(ship_lead_time_days)",
+      "meaning": "Average fulfillment lead time (order->ship)"
+    },
+    "discount_weighted_by_sales": {
+      "expr": "sum(Discount * Sales) / nullif(sum(Sales), 0)",
+      "meaning": "Sales-weighted discount rate (useful when mix changes)"
+    }
+  },
+  "analyst_priors": {
+    "how_to_think": [
+      "Always anchor analysis at the correct grain: line-items for product/mix, distinct orders for order-level rates (returns, AOV), distinct customers for retention/cohorts.",
+      "Use both absolute ($) and rate (%) views: a SKU can be a top profit contributor but have poor margin, or vice versa.",
+      "Discount is a leading indicator of margin pressure; investigate high-discount segments/sub-categories and check if discounting increases volume enough to offset margin loss.",
+      "Small-denominator effects: profit margin can look extreme when sales are tiny; apply minimum sales filters for ranking.",
+      "Mix matters: region/category changes can move overall margin even if within-category margins are stable."
+    ],
+    "common_pitfalls": [
+      "Do not double-apply discount to Sales (Sales is already net in most Superstore extracts). Use Discount for correlation/segmentation, not for recomputing sales without list price.",
+      "Profit here is not audited financial profit; treat it as a contribution metric tied to the dataset's implied cost model.",
+      "Order ID repeats across lines—summing rows is correct for sales/profit, but counting orders requires distinct Order ID.",
+      "Postal Code should be treated as a string; numeric parsing can drop leading zeros.",
+      "Returns data is only a flag; 'net of returns' requires an explicit policy (exclude returned orders, or treat them separately)."
+    ],
+    "default_slices": [
+      {
+        "dimension": "time.order_month",
+        "reason": "finance cadence"
+      },
+      {
+        "dimension": "geography.region",
+        "reason": "org accountability + People sheet mapping"
+      },
+      {
+        "dimension": "product.category",
+        "reason": "top-level portfolio"
+      },
+      {
+        "dimension": "product.sub_category",
+        "reason": "actionable merchandising lever"
+      },
+      {
+        "dimension": "customer.segment",
+        "reason": "different pricing / service model"
+      }
+    ]
+  },
+  "workflows": [
+    {
+      "id": "kpi_snapshot",
+      "name": "Monthly KPI snapshot",
+      "purpose": "Baseline health check for revenue, profit, margin, discount, returns, and fulfillment speed.",
+      "required_tables": [
+        "orders_lines",
+        "returns",
+        "people"
+      ],
+      "minimum_columns": [
+        "Order ID",
+        "Order Date",
+        "Sales",
+        "Profit",
+        "Quantity",
+        "Discount",
+        "Region",
+        "Ship Date",
+        "Ship Mode",
+        "Customer ID",
+        "Returned",
+        "Person"
+      ],
+      "steps": [
+        "Compute KPI time series by order_month: sales, profit, profit_margin, orders, customers, discount_weighted_by_sales, return_rate_orders, lead_time_avg_days.",
+        "Add breakdown by Region and Category for top deltas vs prior month.",
+        "Surface top 5 negative contributors to profit change (sub_category or product_id)."
+      ],
+      "outputs": [
+        "kpi_table",
+        "trend_charts",
+        "top_movers",
+        "source_citations"
+      ]
+    },
+    {
+      "id": "profit_drivers_variance",
+      "name": "Profit drivers (variance investigation)",
+      "purpose": "Explain month-over-month or year-over-year changes in profit and margin.",
+      "required_tables": [
+        "orders_lines",
+        "returns"
+      ],
+      "minimum_columns": [
+        "Order Date",
+        "Sales",
+        "Profit",
+        "Quantity",
+        "Discount",
+        "Category",
+        "Sub-Category",
+        "Product ID",
+        "Region",
+        "Segment",
+        "Returned",
+        "Order ID"
+      ],
+      "steps": [
+        "Select comparison windows (current period vs baseline).",
+        "Compute deltas in sales and profit by candidate dimensions (Region, Category, Sub-Category, Product ID, Segment).",
+        "Rank contributors by profit delta; compute supporting stats: margin change, discount change, volume change (units).",
+        "Check if deltas are driven by mix: compute within-category margin vs mix-weighted margin.",
+        "Flag anomalies: large profit delta with small sales delta (margin shock) or large sales delta with margin collapse (discount-driven growth)."
+      ],
+      "outputs": [
+        "driver_table",
+        "waterfall_data",
+        "narrative_bullets",
+        "citations"
+      ]
+    },
+    {
+      "id": "discount_effectiveness",
+      "name": "Discount effectiveness and margin tradeoffs",
+      "purpose": "Assess whether discounting is profitable or destroying margin, and where discount policy should change.",
+      "required_tables": [
+        "orders_lines"
+      ],
+      "minimum_columns": [
+        "Discount",
+        "Sales",
+        "Profit",
+        "Quantity",
+        "Category",
+        "Sub-Category",
+        "Product ID",
+        "Region",
+        "Order Date"
+      ],
+      "steps": [
+        "Bin Discount into bands (0, 0-10%, 10-20%, 20-40%, 40%+).",
+        "For each band and product hierarchy (Category/Sub-Category/SKU), compute sales, profit, margin, units, ASP.",
+        "Identify segments where higher discounts correlate with lower margin without compensating volume increases.",
+        "Highlight outliers: high-discount SKUs with positive profit (good promos) and low-discount SKUs with negative profit (cost/problem SKUs)."
+      ],
+      "outputs": [
+        "discount_band_table",
+        "scatter_sales_vs_profit",
+        "policy_recommendations",
+        "citations"
+      ]
+    },
+    {
+      "id": "returns_hotspots",
+      "name": "Returns hotspots",
+      "purpose": "Find products/regions with elevated return rate and quantify impact under an explicit policy.",
+      "required_tables": [
+        "orders_lines",
+        "returns"
+      ],
+      "minimum_columns": [
+        "Order ID",
+        "Product ID",
+        "Sub-Category",
+        "Region",
+        "Segment",
+        "Sales",
+        "Profit",
+        "Order Date",
+        "Returned"
+      ],
+      "steps": [
+        "Join Returns to Orders (order-level flag).",
+        "Compute return_rate_orders by Sub-Category, Product ID, Region, Segment.",
+        "Quantify impact under policy: (A) exclude returned orders from realized sales/profit; (B) report gross vs returned separately.",
+        "Identify hotspots with both high return rate and high sales volume (business impact)."
+      ],
+      "outputs": [
+        "returns_table",
+        "hotspot_list",
+        "policy_sensitivity",
+        "citations"
+      ]
+    },
+    {
+      "id": "fulfillment_lead_time",
+      "name": "Fulfillment lead time and service-level proxy",
+      "purpose": "Understand shipping speed by ship mode and geography; relate to profitability and returns.",
+      "required_tables": [
+        "orders_lines",
+        "returns"
+      ],
+      "minimum_columns": [
+        "Order Date",
+        "Ship Date",
+        "Ship Mode",
+        "Region",
+        "State",
+        "Sales",
+        "Profit",
+        "Order ID",
+        "Returned"
+      ],
+      "steps": [
+        "Compute ship_lead_time_days = Ship Date - Order Date.",
+        "Summarize lead time distributions by Ship Mode and Region (avg, p50, p90).",
+        "Correlate lead time with return rate and profit margin (non-causal indicator).",
+        "Flag segments where slow shipping coincides with elevated returns."
+      ],
+      "outputs": [
+        "lead_time_tables",
+        "ship_mode_scorecard",
+        "risk_flags",
+        "citations"
+      ]
+    },
+    {
+      "id": "regional_manager_scorecard",
+      "name": "Regional manager scorecard",
+      "purpose": "Accountability view using People sheet: performance by region owner with actionable breakdowns.",
+      "required_tables": [
+        "orders_lines",
+        "people",
+        "returns"
+      ],
+      "minimum_columns": [
+        "Region",
+        "Person",
+        "Sales",
+        "Profit",
+        "Order Date",
+        "Segment",
+        "Category",
+        "Returned",
+        "Order ID"
+      ],
+      "steps": [
+        "Join People to Orders via Region.",
+        "Compute sales, profit, margin, return rate per Person over time.",
+        "Decompose by Category/Sub-Category to show what each manager's results are driven by.",
+        "Flag underperformance: low margin + high discount + high returns."
+      ],
+      "outputs": [
+        "manager_table",
+        "driver_breakdowns",
+        "alerts",
+        "citations"
+      ]
+    },
+    {
+      "id": "customer_cohorts_repeat",
+      "name": "Customer cohorts and repeat behavior",
+      "purpose": "Approximate retention and customer value using order history.",
+      "required_tables": [
+        "orders_lines"
+      ],
+      "minimum_columns": [
+        "Customer ID",
+        "Order ID",
+        "Order Date",
+        "Sales",
+        "Profit",
+        "Segment",
+        "Region"
+      ],
+      "steps": [
+        "Compute first_order_date per Customer ID and assign cohort month.",
+        "Compute repeat rate by cohort (customers with 2+ distinct orders within N months).",
+        "Compute cohort revenue/profit curves (cumulative sales/profit per customer).",
+        "Slice by Segment and Region to identify healthier cohorts."
+      ],
+      "outputs": [
+        "cohort_matrix",
+        "repeat_rate",
+        "ltv_proxy",
+        "citations"
+      ]
+    },
+    {
+      "id": "anomaly_scan",
+      "name": "Anomaly scan (finance + ops)",
+      "purpose": "Proactively flag unusual spikes/drops in KPIs and identify likely drivers.",
+      "required_tables": [
+        "orders_lines",
+        "returns"
+      ],
+      "minimum_columns": [
+        "Order Date",
+        "Sales",
+        "Profit",
+        "Discount",
+        "Quantity",
+        "Region",
+        "Category",
+        "Sub-Category",
+        "Returned",
+        "Order ID"
+      ],
+      "steps": [
+        "Compute weekly or monthly KPI series: sales, profit, margin, discount_weighted_by_sales, return_rate.",
+        "Detect anomalies using z-scores or robust median absolute deviation (MAD).",
+        "For each anomaly, attribute drivers by ranking dimension contributions (Region/Sub-Category/SKU).",
+        "Output a short 'what changed' narrative with supporting numbers."
+      ],
+      "outputs": [
+        "anomaly_list",
+        "driver_attribution",
+        "narratives",
+        "citations"
+      ]
+    }
+  ],
+  "intent_router": {
+    "principle": "Route questions to a workflow by identifying metric + comparison window + breakdown dimension; then pull only the minimum columns needed.",
+    "examples": [
+      {
+        "question": "Show me customer profitability by region",
+        "workflow": "regional_manager_scorecard",
+        "notes": "Use Region and Customer ID; if manager requested, join People."
+      },
+      {
+        "question": "Why did profit drop in Q2 2017?",
+        "workflow": "profit_drivers_variance",
+        "notes": "Compare Q2 2017 vs Q1 2017 or Q2 2016; rank drivers by Sub-Category then drill to SKU."
+      },
+      {
+        "question": "Are discounts hurting us?",
+        "workflow": "discount_effectiveness",
+        "notes": "Use discount banding and margin tradeoffs."
+      },
+      {
+        "question": "Which products have high return rates?",
+        "workflow": "returns_hotspots",
+        "notes": "Join returns and compute return_rate; quantify under policy assumptions."
+      },
+      {
+        "question": "How fast are we shipping?",
+        "workflow": "fulfillment_lead_time",
+        "notes": "Compute lead time and summarize by ship mode/region."
+      }
+    ],
+    "keyword_signals": {
+      "returns": [
+        "return",
+        "returned",
+        "refund"
+      ],
+      "discount": [
+        "discount",
+        "promotion",
+        "promo",
+        "markdown"
+      ],
+      "shipping": [
+        "ship",
+        "delivery",
+        "lead time",
+        "fulfillment"
+      ],
+      "drivers": [
+        "why",
+        "drivers",
+        "variance",
+        "change",
+        "drop",
+        "increase"
+      ],
+      "manager": [
+        "manager",
+        "owner",
+        "person",
+        "region lead"
+      ],
+      "cohort": [
+        "cohort",
+        "retention",
+        "repeat",
+        "new customers"
+      ]
+    }
+  },
+  "data_quality_checks": [
+    {
+      "check": "Row ID uniqueness",
+      "rule": "count_distinct(Row ID) == row_count",
+      "severity": "error"
+    },
+    {
+      "check": "Discount range",
+      "rule": "0 <= Discount <= 1",
+      "severity": "warn"
+    },
+    {
+      "check": "Quantity positive",
+      "rule": "Quantity >= 1",
+      "severity": "warn"
+    },
+    {
+      "check": "Sales non-negative",
+      "rule": "Sales >= 0",
+      "severity": "warn"
+    },
+    {
+      "check": "Order Date <= Ship Date",
+      "rule": "Order Date <= Ship Date",
+      "severity": "warn"
+    },
+    {
+      "check": "Region in People mapping",
+      "rule": "Region in People.Region",
+      "severity": "info"
+    }
+  ],
+  "provenance": {
+    "minimum": [
+      "source_file",
+      "source_sheet",
+      "table_range_or_row_ids"
+    ],
+    "recommended": [
+      "For any reported aggregate, provide top contributing Row IDs (or Order IDs) that explain the result.",
+      "For dashboards, store the exact SQL/pandas operations used to compute each tile."
+    ]
+  }
+}
